@@ -1,0 +1,187 @@
+# EventBus.Kafka
+<b>EventBus.Kafka</b> is a <b>Kafka</b> implementation of the <a href="https://github.com/CleanOnionArchitecture/EventBus">Clean Onion Architecture Event Bus</a> <br>
+This nuget package provides a quick and clean solution to messaging with <b>Kafka</b> and currently supports only .NET 6 and .NET 7
+
+## Quick Start
+To installing a package run command or install from nuget store.
+```
+dotnet add package CleanOnionArchitecture.EventBus.Kafka
+```
+<br>
+Register your event bus like this
+
+```csharp
+builder.Services
+    .AddEventBus()
+    .AddKafkaEventBus(myKafkaConfiguration =>
+    {
+        myKafkaConfiguration.Server = "myKafkaServer";
+        myKafkaConfiguration.Port = "myPort";
+        //And other fields you desire
+    });
+```
+
+or like this
+
+```csharp
+builder.Services
+    .AddEventBus()
+    .AddKafkaEventBus("appsettings section goes here!");
+```
+
+An example appsettings section without authentication
+
+```json
+{
+    "MyKafkaConfiguration": {
+        "Server": "localhost",
+        "Port": 9092,
+        "ConsumerGroupId": "kafka-consumers",
+        "IsUsingAuthentication" : false,
+        "Username": "these",
+        "Password": "values",
+        "SaslMechanism" : "are",
+        "SecurityProtocol" : "optional",
+        "EnableFlush" : "true",
+        "FlushTimeout" : 10
+    }
+}
+```
+
+<br>
+An example appsettings section with authentication
+
+```json
+{
+    "MyKafkaConfiguration": {
+        "Server": "localhost",
+        "Port": 9092,
+        "ConsumerGroupId": "kafka-consumers",
+        "IsUsingAuthentication" : true,
+        "Username": "admin",
+        "Password": "admin-secret",
+        "SaslMechanism" : "PLAIN",
+        "SecurityProtocol" : "Plaintext",
+        "EnableFlush" : "true",
+        "FlushTimeout" : 10
+    }
+}
+```
+
+> **Note**
+> Supported Sasl mechanisms values are GSSAPI, PLAIN, SCRAM-SHA-256, SCRAM-SHA-512, OAUTHBEARER <br>
+> Supported Security Protocol values are Plaintext, Ssl, SaslPlaintext, SaslSsl <br>
+> These registration types are also supporting generic arguments <br>
+> <br>
+> EnableFlush <br>
+> Flush status Kafka Event Bus. If enabled producer connection closes itself after given <see cref="FlushTimeout">FlushTimeout</see> seconds. <br>
+> Default value is true <br>
+> <br>
+> FlushTimeout <br>
+> Flush Timeout value for Kafka Event Bus. This value timeouts the <see cref="Confluent.Kafka.IProducer.Flush(TimeSpan)">Flush</see> method as given seconds <br>
+> Default value is 10
+
+<br>
+
+```csharp
+public interface INotificationServiceEventBus : IKafkaEventBus
+{
+}
+```
+<br>
+
+```csharp
+public class NotificationServiceEventBus : KafkaEventBus, INotificationServiceEventBus
+{
+    public NotificationServiceEventBus(ILogger<IEventBus> logger, ISubscriptionManager eventBusSubscriptionManager, IServiceScopeFactory serviceScopeFactory, KafkaServiceConfiguration kafkaServiceConfiguration) 
+        : base(logger, eventBusSubscriptionManager, serviceScopeFactory, kafkaServiceConfiguration)
+    {
+    }
+}
+```
+
+<br>
+
+```csharp
+builder.Services
+    .AddEventBus()
+    .AddKafkaEventBus<INotificationServiceEventBus, NotificationServiceEventBus>("Integrations:NotificationService:Kafka");
+```
+
+<br>
+In order to messaging with <b>Kafka</b> objects should be inherited from <b>Event</b> class
+<br>
+
+```csharp
+public record DummyEvent : Event
+{
+    public string DummyMessage { get; set; }
+}
+```
+> **Warning**
+> <br>
+> <b>Curently Kafka topic names are created from class names, make sure producer and consumer have the same class name in both projects</b>
+
+<br>
+
+### Producer
+
+For producer, once event bus has registered, it can be simply published 
+
+```csharp
+    private readonly IKafkaEventBus _eventBus; //This can be another implementation which inherits IKafkaEventBus
+
+    public EventPublisherProvider(
+        IKafkaEventBus eventBus
+    )
+    {
+        this._eventBus = eventBus;
+    }
+
+    public async Task PublishDummy(DummyEvent @event)
+    {
+        await this._eventBus.PublishAsync(@event);
+    }
+```
+
+### Consumer
+
+Consumer side must contain an event handler that inherits IEventHandler for every event
+  
+```csharp
+public class DummyEventHandler : IEventHandler<DummyEvent>
+{
+    public Task HandleEvent(DummyEvent @event, CancellationToken cancellationToken)
+    {
+        //logic here 
+    }
+}
+```
+<br>
+
+> **Note**
+> When **EnableDeadLetter** configuration is set to **true**, events that throws an exception when handled will be send to the topic named **DeadLetter**
+
+<br>
+
+On service registration part event handlers must be registered 
+```csharp
+builder.Services.AddScoped<DummyEventHandler>();
+```
+> **Note**
+> Currently this registration step is manual, further improvements will focus on this situtation
+
+<br>
+Consumer must subscribe every event that needs to processed 
+<br>
+<br>
+
+```csharp
+WebApplication app = builder.Build();
+IKafkaEventBus eventBus = app.Services.GetRequiredService<IKafkaEventBus>();
+eventBus.SubscribeAsync<DummyEvent, DummyEventHandler>(CancellationToken.None).ConfigureAwait(false);
+```
+<br> 
+
+Further improvements are on the way! 👨‍💻 <br>
+Feel free to share your thoughts or contribute to our project
