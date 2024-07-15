@@ -68,7 +68,7 @@ An example appsettings section with authentication
 }
 ```
 
-> **Note**
+> [!NOTE]
 > Supported Sasl mechanisms values are GSSAPI, PLAIN, SCRAM-SHA-256, SCRAM-SHA-512, OAUTHBEARER <br>
 > Supported Security Protocol values are Plaintext, Ssl, SaslPlaintext, SaslSsl <br>
 > These registration types are also supporting generic arguments <br>
@@ -118,7 +118,7 @@ public record DummyEvent : Event
     public string DummyMessage { get; set; }
 }
 ```
-> **Warning**
+> [!WARNING]
 > <br>
 > <b>Curently Kafka topic names are created from class names, make sure producer and consumer have the same class name in both projects</b>
 
@@ -159,7 +159,7 @@ public class DummyEventHandler : IEventHandler<DummyEvent>
 ```
 <br>
 
-> **Note**
+> [!NOTE]
 > When **EnableDeadLetter** configuration is set to **true**, events that throws an exception when handled will be send to the topic named **DeadLetter**
 
 <br>
@@ -168,7 +168,7 @@ On service registration part event handlers must be registered
 ```csharp
 builder.Services.AddScoped<DummyEventHandler>();
 ```
-> **Note**
+> [!NOTE]
 > Currently this registration step is manual, further improvements will focus on this situtation
 
 <br>
